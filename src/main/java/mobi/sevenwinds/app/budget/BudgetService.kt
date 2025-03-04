@@ -24,12 +24,15 @@ object BudgetService {
             val queryTotalByYear = BudgetTable.select { BudgetTable.year eq param.year }
             val total = queryTotalByYear.count()
 
+            val sumByType = BudgetEntity.wrapRows(queryTotalByYear)
+                .map { it.toResponse() }
+                .groupBy { it.type.name }
+                .mapValues { it.value.sumOf { v -> v.amount } }
+
             val queryPaginated = queryTotalByYear
                 .limit(param.limit, param.offset)
 
             val data = BudgetEntity.wrapRows(queryPaginated).map { it.toResponse() }
-
-            val sumByType = data.groupBy { it.type.name }.mapValues { it.value.sumOf { v -> v.amount } }
 
             return@transaction BudgetYearStatsResponse(
                 total = total,
