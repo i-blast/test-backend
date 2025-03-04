@@ -21,12 +21,13 @@ object BudgetService {
 
     suspend fun getYearStats(param: BudgetYearParam): BudgetYearStatsResponse = withContext(Dispatchers.IO) {
         transaction {
-            val query = BudgetTable
-                .select { BudgetTable.year eq param.year }
+            val queryTotalByYear = BudgetTable.select { BudgetTable.year eq param.year }
+            val total = queryTotalByYear.count()
+
+            val queryPaginated = queryTotalByYear
                 .limit(param.limit, param.offset)
 
-            val total = query.count()
-            val data = BudgetEntity.wrapRows(query).map { it.toResponse() }
+            val data = BudgetEntity.wrapRows(queryPaginated).map { it.toResponse() }
 
             val sumByType = data.groupBy { it.type.name }.mapValues { it.value.sumOf { v -> v.amount } }
 
