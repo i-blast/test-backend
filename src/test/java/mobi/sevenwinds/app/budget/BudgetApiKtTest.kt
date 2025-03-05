@@ -1,16 +1,14 @@
 package mobi.sevenwinds.app.budget
 
 import io.restassured.RestAssured
-import io.restassured.http.ContentType
-import kotlinx.coroutines.runBlocking
-import mobi.sevenwinds.app.author.AuthorService
+import mobi.sevenwinds.app.author.AuthorEntity
 import mobi.sevenwinds.app.author.AuthorTable
-import mobi.sevenwinds.app.author.CreateAuthorRequest
 import mobi.sevenwinds.common.ServerTest
 import mobi.sevenwinds.common.jsonBody
 import mobi.sevenwinds.common.toResponse
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime
 import org.junit.Assert
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -85,29 +83,29 @@ class BudgetApiKtTest : ServerTest() {
 
     @Test
     fun testCreateBudget() {
-        val withoutAuthor = "{\"year\": \"2021\", \"month\": \"5\", \"amount\": \"100\", \"type\": \"Приход\"}"
         RestAssured.given()
-            .contentType(ContentType.JSON)
-            .body(withoutAuthor)
+            .jsonBody(BudgetRecord(2025, 1, 5, BudgetType.Приход))
             .`when`()
             .post("/budget/add")
             .then()
             .assertThat()
             .statusCode(200)
 
-        runBlocking {
-            AuthorService.addRecord(CreateAuthorRequest("ilYa"))
+        val authorEntity = transaction {
+            val entity = AuthorEntity.new {
+                this.fullName = "ilYa"
+                this.createdAt = DateTime.now()
+            }
+            return@transaction entity
         }
-        val withAuthor = "{\"year\": \"2021\", \"month\": \"5\", \"amount\": \"100\", \"type\": \"Приход\", \"author\": \"1\"}"
         RestAssured.given()
-            .contentType(ContentType.JSON)
-            .body(withAuthor)
+            .jsonBody(BudgetRecord(2025, 1, 5, BudgetType.Приход, authorEntity.id.value))
             .`when`()
             .post("/budget/add")
             .then()
             .assertThat()
             .statusCode(200)
-            .extract().body().`as`(BudgetRecord::class.java).let { budget ->
+            .extract().body().toResponse<BudgetRecord>().let { budget ->
                 println(budget)
 
                 Assert.assertNotNull(budget.author)
