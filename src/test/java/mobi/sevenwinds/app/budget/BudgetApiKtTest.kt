@@ -1,6 +1,11 @@
 package mobi.sevenwinds.app.budget
 
 import io.restassured.RestAssured
+import io.restassured.http.ContentType
+import kotlinx.coroutines.runBlocking
+import mobi.sevenwinds.app.author.AuthorService
+import mobi.sevenwinds.app.author.AuthorTable
+import mobi.sevenwinds.app.author.CreateAuthorRequest
 import mobi.sevenwinds.common.ServerTest
 import mobi.sevenwinds.common.jsonBody
 import mobi.sevenwinds.common.toResponse
@@ -14,7 +19,10 @@ class BudgetApiKtTest : ServerTest() {
 
     @BeforeEach
     internal fun setUp() {
-        transaction { BudgetTable.deleteAll() }
+        transaction {
+            AuthorTable.deleteAll()
+            BudgetTable.deleteAll()
+        }
     }
 
     @Test
@@ -73,6 +81,37 @@ class BudgetApiKtTest : ServerTest() {
             .jsonBody(BudgetRecord(2020, 15, 5, BudgetType.Приход))
             .post("/budget/add")
             .then().statusCode(400)
+    }
+
+    @Test
+    fun testCreateBudget() {
+        val withoutAuthor = "{\"year\": \"2021\", \"month\": \"5\", \"amount\": \"100\", \"type\": \"Приход\"}"
+        RestAssured.given()
+            .contentType(ContentType.JSON)
+            .body(withoutAuthor)
+            .`when`()
+            .post("/budget/add")
+            .then()
+            .assertThat()
+            .statusCode(200)
+
+        runBlocking {
+            AuthorService.addRecord(CreateAuthorRequest("ilYa"))
+        }
+        val withAuthor = "{\"year\": \"2021\", \"month\": \"5\", \"amount\": \"100\", \"type\": \"Приход\", \"author\": \"1\"}"
+        RestAssured.given()
+            .contentType(ContentType.JSON)
+            .body(withAuthor)
+            .`when`()
+            .post("/budget/add")
+            .then()
+            .assertThat()
+            .statusCode(200)
+            .extract().body().`as`(BudgetRecord::class.java).let { budget ->
+                println(budget)
+
+                Assert.assertNotNull(budget.author)
+            }
     }
 
     private fun addRecord(record: BudgetRecord) {
