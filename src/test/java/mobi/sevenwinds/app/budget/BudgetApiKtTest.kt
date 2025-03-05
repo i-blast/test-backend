@@ -3,9 +3,11 @@ package mobi.sevenwinds.app.budget
 import io.restassured.RestAssured
 import mobi.sevenwinds.app.author.AuthorEntity
 import mobi.sevenwinds.app.author.AuthorTable
+import mobi.sevenwinds.app.common.toJodaDateTime
 import mobi.sevenwinds.common.ServerTest
 import mobi.sevenwinds.common.jsonBody
 import mobi.sevenwinds.common.toResponse
+import org.assertj.core.api.Assertions.assertThat
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -69,6 +71,20 @@ class BudgetApiKtTest : ServerTest() {
     }
 
     @Test
+    fun testStatsWithAuthor() {
+        val authorEntity = createAuthor()
+        addRecord(BudgetRecord(2023, 5, 100, BudgetType.Приход, authorEntity.id.value))
+
+        RestAssured.given()
+            .get("/budget/year/2023/stats?limit=100&offset=0")
+            .toResponse<BudgetYearStatsResponse>().let { response ->
+                assertThat(response.items).isNotEmpty
+                assertThat(response.items[0].authorFullName).isEqualTo(authorEntity.fullName)
+                assertThat(response.items[0].authorCreatedAt?.toJodaDateTime()).isEqualTo(authorEntity.createdAt)
+            }
+    }
+
+    @Test
     fun testInvalidMonthValues() {
         RestAssured.given()
             .jsonBody(BudgetRecord(2020, -5, 5, BudgetType.Приход))
@@ -91,13 +107,7 @@ class BudgetApiKtTest : ServerTest() {
             .assertThat()
             .statusCode(200)
 
-        val authorEntity = transaction {
-            val entity = AuthorEntity.new {
-                this.fullName = "ilYa"
-                this.createdAt = DateTime.now()
-            }
-            return@transaction entity
-        }
+        val authorEntity = createAuthor()
         RestAssured.given()
             .jsonBody(BudgetRecord(2025, 1, 5, BudgetType.Приход, authorEntity.id.value))
             .`when`()
@@ -110,6 +120,14 @@ class BudgetApiKtTest : ServerTest() {
 
                 Assert.assertNotNull(budget.author)
             }
+    }
+
+    private fun createAuthor(): AuthorEntity = transaction {
+        val entity = AuthorEntity.new {
+            this.fullName = "ilYa"
+            this.createdAt = DateTime.now()
+        }
+        return@transaction entity
     }
 
     private fun addRecord(record: BudgetRecord) {

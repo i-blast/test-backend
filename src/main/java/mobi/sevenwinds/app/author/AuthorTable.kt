@@ -1,10 +1,10 @@
 package mobi.sevenwinds.app.author
 
+import mobi.sevenwinds.app.common.toJavaLocalDateTime
 import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.IntIdTable
-import java.time.ZoneId
 
 object AuthorTable : IntIdTable("author") {
     val fullName = varchar("full_name", 128)
@@ -20,9 +20,7 @@ class AuthorEntity(id: EntityID<Int>) : IntEntity(id) {
     fun toResponse(): AuthorRecord {
         return AuthorRecord(
             fullName,
-            createdAt.toDate().toInstant()
-                .atZone(ZoneId.systemDefault())
-                .toLocalDateTime(),
+            createdAt.toJavaLocalDateTime(),
         )
     }
 }

@@ -1,5 +1,6 @@
 package mobi.sevenwinds.app.budget
 
+import com.fasterxml.jackson.annotation.JsonFormat
 import com.papsign.ktor.openapigen.annotations.parameters.PathParam
 import com.papsign.ktor.openapigen.annotations.parameters.QueryParam
 import com.papsign.ktor.openapigen.annotations.type.number.integer.max.Max
@@ -10,7 +11,8 @@ import com.papsign.ktor.openapigen.route.path.normal.get
 import com.papsign.ktor.openapigen.route.path.normal.post
 import com.papsign.ktor.openapigen.route.response.respond
 import com.papsign.ktor.openapigen.route.route
-import mobi.sevenwinds.app.author.AuthorRecord
+import mobi.sevenwinds.app.common.DATE_TIME_PATTERN
+import java.time.LocalDateTime
 
 fun NormalOpenAPIRoute.budget() {
     route("/budget") {
@@ -43,10 +45,20 @@ data class BudgetYearParam(
 class BudgetYearStatsResponse(
     val total: Int,
     val totalByType: Map<String, Int>,
-    val items: List<BudgetRecord>
+    val items: List<BudgetStatsView>,
 )
 
 enum class BudgetType {
     Приход,
     Расход,
 }
+
+data class BudgetStatsView(
+    val year: Int,
+    val month: Int,
+    val amount: Int,
+    val type: BudgetType,
+    val authorFullName: String? = null,
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DATE_TIME_PATTERN)
+    val authorCreatedAt: LocalDateTime? = null,
+)
