@@ -5,7 +5,12 @@ import kotlinx.coroutines.withContext
 import mobi.sevenwinds.app.author.AuthorTable
 import mobi.sevenwinds.app.common.toJavaLocalDateTime
 import org.jetbrains.exposed.dao.EntityID
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -35,7 +40,8 @@ object BudgetService {
                     AuthorTable.fullName,
                     AuthorTable.createdAt,
                 )
-                .select { BudgetTable.year eq param.year }
+                .select { getYearStatsCondition(param) }
+
             val total = queryTotalByYear.count()
 
             val sumByType = queryTotalByYear
@@ -66,5 +72,14 @@ object BudgetService {
                 items = data
             )
         }
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun getYearStatsCondition(param: BudgetYearParam): Op<Boolean> {
+        val eqYearCondition = BudgetTable.year eq param.year
+        val authorNameCondition = AuthorTable.fullName.lowerCase() like "%${param.authorName?.lowercase()}%"
+        return param.authorName?.let { name ->
+            eqYearCondition and authorNameCondition
+        } ?: eqYearCondition
     }
 }

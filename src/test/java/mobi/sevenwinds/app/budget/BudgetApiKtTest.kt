@@ -71,7 +71,7 @@ class BudgetApiKtTest : ServerTest() {
     }
 
     @Test
-    fun testStatsWithAuthor() {
+    fun testGetStatsWithAuthorFields() {
         val authorEntity = createAuthor()
         addRecord(BudgetRecord(2023, 5, 100, BudgetType.Приход, authorEntity.id.value))
 
@@ -81,6 +81,38 @@ class BudgetApiKtTest : ServerTest() {
                 assertThat(response.items).isNotEmpty
                 assertThat(response.items[0].authorFullName).isEqualTo(authorEntity.fullName)
                 assertThat(response.items[0].authorCreatedAt?.toJodaDateTime()).isEqualTo(authorEntity.createdAt)
+            }
+    }
+
+    @Test
+    fun testStatsFilterByAuthor() {
+        val author1 = createAuthor("author1")
+        val author2 = createAuthor("author2")
+        addRecord(BudgetRecord(2023, 5, 100, BudgetType.Приход, author1.id.value))
+        addRecord(BudgetRecord(2023, 5, 100, BudgetType.Приход, author2.id.value))
+        addRecord(BudgetRecord(2023, 6, 100, BudgetType.Приход, author1.id.value))
+
+        RestAssured.given()
+            .get("/budget/year/2023/stats?limit=100&offset=0&authorName=author1")
+            .toResponse<BudgetYearStatsResponse>().let { response ->
+                assertThat(response.items).isNotEmpty
+                assertThat(response.items).size().isEqualTo(2)
+            }
+    }
+
+    @Test
+    fun testStatsFilterByEmptyAuthor() {
+        val author1 = createAuthor("author1")
+        val author2 = createAuthor("author2")
+        addRecord(BudgetRecord(2023, 5, 100, BudgetType.Приход, author1.id.value))
+        addRecord(BudgetRecord(2023, 5, 100, BudgetType.Приход, author2.id.value))
+        addRecord(BudgetRecord(2023, 6, 100, BudgetType.Приход, author1.id.value))
+
+        RestAssured.given()
+            .get("/budget/year/2023/stats?limit=100&offset=0")
+            .toResponse<BudgetYearStatsResponse>().let { response ->
+                assertThat(response.items).isNotEmpty
+                assertThat(response.items).size().isEqualTo(3)
             }
     }
 
@@ -122,9 +154,9 @@ class BudgetApiKtTest : ServerTest() {
             }
     }
 
-    private fun createAuthor(): AuthorEntity = transaction {
+    private fun createAuthor(fullName: String = "ilYa"): AuthorEntity = transaction {
         val entity = AuthorEntity.new {
-            this.fullName = "ilYa"
+            this.fullName = fullName
             this.createdAt = DateTime.now()
         }
         return@transaction entity
