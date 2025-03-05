@@ -19,11 +19,6 @@ class AuthorApiKtTest : ServerTest() {
     fun testCreateAuthor() {
         val requestBody = "{\"fullName\": \"ilYa\"}"
 
-        /*        val objectMapper = ObjectMapper().apply {
-                    registerModule(JodaModule())
-                    findAndRegisterModules()
-                }*/
-
         RestAssured.given()
             .contentType(ContentType.JSON)
             .body(requestBody)
